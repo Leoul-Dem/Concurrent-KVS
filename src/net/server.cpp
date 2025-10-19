@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include "concurrent_hashmap.cpp"
+#include "concurrent_hashmap.hpp"
 #include <iostream>
 #include <vector>
 #include <atomic>
@@ -51,7 +51,7 @@ int create_server_fd_and_listen(int& server_fd, std::string& err){
         err = "listen";
         return -1;
     }
-
+    return 1;
 }
 
 int accept_client_conn(int server_fd, std::vector<int>& client_fd){
