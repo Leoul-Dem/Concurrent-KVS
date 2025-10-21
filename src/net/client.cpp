@@ -6,8 +6,8 @@
 #include <csignal>
 #include <errno.h>
 
-volatile sig_atomic_t paused = 0;  
-volatile sig_atomic_t terminated = 0; 
+volatile sig_atomic_t paused = 0;
+volatile sig_atomic_t terminated = 0;
 
 void handle_sigusr1(int) {
     paused = 1;
@@ -49,10 +49,10 @@ int connect_to_server(int& client_fd){
 ssize_t read_full(int fd, void* buf, size_t count) {
     size_t total_read = 0;
     char* ptr = (char*)buf;
-    
+
     while (total_read < count) {
         ssize_t n = read(fd, ptr + total_read, count - total_read);
-        
+
         if (n == -1) {
             if (errno == EINTR) {
                 // Interrupted by signal, check if we should terminate
@@ -62,26 +62,26 @@ ssize_t read_full(int fd, void* buf, size_t count) {
             perror("read error");
             return -1;  // Real error
         }
-        
+
         if (n == 0) {
             // Connection closed
             std::cerr << "Connection closed by server" << std::endl;
             return -1;
         }
-        
+
         total_read += n;
     }
-    
+
     return total_read;
 }
 
 ssize_t write_full(int fd, const void* buf, size_t count) {
     size_t total_written = 0;
     const char* ptr = (const char*)buf;
-    
+
     while (total_written < count) {
         ssize_t n = write(fd, ptr + total_written, count - total_written);
-        
+
         if (n == -1) {
             if (errno == EINTR) {
                 if (terminated) return -1;
@@ -90,10 +90,10 @@ ssize_t write_full(int fd, const void* buf, size_t count) {
             perror("write error");
             return -1;
         }
-        
+
         total_written += n;
     }
-    
+
     return total_written;
 }
 
@@ -117,30 +117,30 @@ int exchange_pid_with_shmem_fd(int client_fd, int& mem_fd){
     return pid;
 }
 
-int main(){
+int run_client(){
   signal(SIGUSR1, handle_sigusr1);
   signal(SIGUSR2, handle_sigusr2);
   signal(SIGTERM, handle_sigterm);
   signal(SIGINT, handle_sigint);
-  
+
   int client_fd;
-  
+
   if (connect_to_server(client_fd) == -1) {
       return 1;
   }
-  
+
   int mem_fd;
-  
+
   int pid = exchange_pid_with_shmem_fd(client_fd, mem_fd);
-  
+
   if (pid == -1) {
       close(client_fd);
       return 1;
   }
-  
+
   std::cout << "SHMEM: " << mem_fd << std::endl;
   std::cout << "PID: " << pid << std::endl;
-  
+
   // Main event loop
   while(!terminated){
     if(paused){
@@ -148,12 +148,12 @@ int main(){
             usleep(100000);  // 100ms - reasonable for this use case
         }
     }
-    
+
     // Do your actual work here
-    
+
   }
-  
+
   std::cout << "Client shutting down..." << std::endl;
   close(client_fd);
-  return 0; 
+  return 0;
 }
