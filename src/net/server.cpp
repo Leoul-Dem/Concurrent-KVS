@@ -13,6 +13,7 @@
 #include <fcntl.h>
 
 #include "../../include/task_queue.hpp"
+#include "../../include/kvs_server.hpp"
 
 const char* socket_path = "/tmp/simple_socket";
 std::vector<int> pid;
@@ -175,7 +176,26 @@ int run() {
     // Construct the TaskQueue in the shared memory
     TaskQueue<int, int>* queue = new (shm_ptr) TaskQueue<int, int>();
 
+    // Create and start the KVS server with worker threads
+    std::cout << "Initializing KVS Server..." << std::endl;
+    KVSServer<int, int> kvs_server(queue);
+    
+    // Start worker threads (use hardware concurrency)
+    size_t num_workers = std::thread::hardware_concurrency();
+    if (num_workers == 0) num_workers = 4; // Fallback if detection fails
+    
+    if (!kvs_server.start(num_workers)) {
+        std::cerr << "Failed to start KVS server" << std::endl;
+        munmap(shm_ptr, shm_size);
+        shm_unlink(SHM_NAME);
+        return 1;
+    }
+
+    // Run the network server (accepts clients, distributes shmem_fd)
     run_server(shm_fd);
+
+    // Stop the KVS server workers
+    kvs_server.stop();
 
     // Clean up
     munmap(shm_ptr, shm_size);

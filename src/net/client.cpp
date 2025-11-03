@@ -161,6 +161,7 @@ int run_client(){
 
         // Demo: Submit some test operations
         if (operation_count < 10) {
+            // Phase 1: SET operations (keys 0-9)
             int task_id = kvs_client.set(operation_count, operation_count * 100);
             if (task_id != -1) {
                 std::cout << "Submitted SET operation: key=" << operation_count 
@@ -172,6 +173,60 @@ int run_client(){
             
             operation_count++;
             usleep(500000); // Sleep 500ms between operations
+        } else if (operation_count < 20) {
+            // Phase 2: GET operations (read back keys 0-9)
+            int key = operation_count - 10;
+            int task_id = kvs_client.get(key);
+            if (task_id != -1) {
+                std::cout << "Submitted GET operation: key=" << key 
+                          << ", task_id=" << task_id << std::endl;
+            } else {
+                std::cerr << "Failed to submit GET task" << std::endl;
+            }
+            
+            operation_count++;
+            usleep(500000);
+        } else if (operation_count < 25) {
+            // Phase 3: POST operations (try to insert existing keys - should fail)
+            int key = operation_count - 20;
+            int task_id = kvs_client.post(key, 999);
+            if (task_id != -1) {
+                std::cout << "Submitted POST operation: key=" << key 
+                          << ", value=999, task_id=" << task_id 
+                          << " (should FAIL - key exists)" << std::endl;
+            } else {
+                std::cerr << "Failed to submit POST task" << std::endl;
+            }
+            
+            operation_count++;
+            usleep(500000);
+        } else if (operation_count < 30) {
+            // Phase 4: DELETE operations (remove keys 0-4)
+            int key = operation_count - 25;
+            int task_id = kvs_client.del(key);
+            if (task_id != -1) {
+                std::cout << "Submitted DELETE operation: key=" << key 
+                          << ", task_id=" << task_id << std::endl;
+            } else {
+                std::cerr << "Failed to submit DELETE task" << std::endl;
+            }
+            
+            operation_count++;
+            usleep(500000);
+        } else if (operation_count < 35) {
+            // Phase 5: GET deleted keys (should not be found)
+            int key = operation_count - 30;
+            int task_id = kvs_client.get(key);
+            if (task_id != -1) {
+                std::cout << "Submitted GET operation: key=" << key 
+                          << ", task_id=" << task_id 
+                          << " (should NOT FOUND - was deleted)" << std::endl;
+            } else {
+                std::cerr << "Failed to submit GET task" << std::endl;
+            }
+            
+            operation_count++;
+            usleep(500000);
         } else {
             usleep(100000); // Just idle
         }
