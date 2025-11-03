@@ -12,7 +12,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include "../../include/task_queue.hpp"
+#include "../../include/shared_context.hpp"
 #include "../../include/kvs_server.hpp"
 
 const char* socket_path = "/tmp/simple_socket";
@@ -155,8 +155,8 @@ int run() {
         return 1;
     }
 
-    // Define the size of the shared memory object
-    size_t shm_size = sizeof(TaskQueue<int, int>);
+    // Define the size of the shared memory object (now includes ResponseTable)
+    size_t shm_size = sizeof(SharedMemoryContext<int, int>);
 
     // Set the size of the shared memory object
     if (ftruncate(shm_fd, shm_size) == -1) {
@@ -173,12 +173,12 @@ int run() {
         return 1;
     }
 
-    // Construct the TaskQueue in the shared memory
-    TaskQueue<int, int>* queue = new (shm_ptr) TaskQueue<int, int>();
+    // Construct the SharedMemoryContext in the shared memory
+    SharedMemoryContext<int, int>* context = new (shm_ptr) SharedMemoryContext<int, int>();
 
     // Create and start the KVS server with worker threads
     std::cout << "Initializing KVS Server..." << std::endl;
-    KVSServer<int, int> kvs_server(queue);
+    KVSServer<int, int> kvs_server(&context->task_queue, &context->response_table);
     
     // Start worker threads (use hardware concurrency)
     size_t num_workers = std::thread::hardware_concurrency();

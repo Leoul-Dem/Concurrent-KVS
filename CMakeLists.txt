@@ -39,6 +39,15 @@ target_link_libraries(kvs_client
     PRIVATE rt
 )
 
+# Test executable for Phase 3 verification
+add_executable(test_operations
+    tests/test_operations.cpp
+)
+target_link_libraries(test_operations
+    PRIVATE kvs_lib
+    PRIVATE pthread
+)
+
 # Installation rules
 install(TARGETS kvs_server kvs_client
     RUNTIME DESTINATION bin

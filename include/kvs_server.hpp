@@ -2,11 +2,11 @@
 #pragma once
 
 #include "task_queue.hpp"
+#include "response_table.hpp"
 #include "concurrent_hashmap.hpp"
 #include <vector>
 #include <thread>
 #include <atomic>
-#include <memory>
 
 /**
  * @brief Server-side library interface for Concurrent KVS
@@ -30,6 +30,9 @@ private:
     // Pointer to the shared TaskQueue (in shared memory)
     TaskQueue<K, V>* task_queue;
     
+    // Pointer to the shared ResponseTable (in shared memory)
+    ResponseTable<V>* response_table;
+    
     // Worker thread pool
     std::vector<std::thread> workers;
     
@@ -44,11 +47,12 @@ private:
     
 public:
     /**
-     * @brief Construct a KVSServer with a task queue
+     * @brief Construct a KVSServer with a task queue and response table
      * @param queue Pointer to shared memory TaskQueue
+     * @param responses Pointer to shared memory ResponseTable
      * @param stripe_count Number of lock stripes for ConcurrentHashMap (defaults to hardware concurrency)
      */
-    explicit KVSServer(TaskQueue<K, V>* queue, size_t stripe_count = std::thread::hardware_concurrency());
+    explicit KVSServer(TaskQueue<K, V>* queue, ResponseTable<V>* responses, size_t stripe_count = std::thread::hardware_concurrency());
     
     /**
      * @brief Destructor - ensures workers are stopped

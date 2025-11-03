@@ -7,13 +7,17 @@
 #include <thread>
 
 template <typename K, typename V>
-KVSServer<K, V>::KVSServer(TaskQueue<K, V>* queue, size_t stripe_count)
+KVSServer<K, V>::KVSServer(TaskQueue<K, V>* queue, ResponseTable<V>* responses, size_t stripe_count)
     : storage(stripe_count)
     , task_queue(queue)
+    , response_table(responses)
     , running(false)
 {
     if (task_queue == nullptr) {
         throw std::invalid_argument("TaskQueue pointer cannot be null");
+    }
+    if (response_table == nullptr) {
+        throw std::invalid_argument("ResponseTable pointer cannot be null");
     }
 }
 
@@ -119,41 +123,57 @@ void KVSServer<K, V>::process_task(const Task<K, V>& task) {
         case CMD_GET: {
             V value;
             bool found = storage.find(task.key, value);
+            
+            // Write response
+            Response<V>* response = response_table->get_slot(task.task_id);
             if (found) {
+                response->value = value;
+                response->status.store(RESPONSE_SUCCESS, std::memory_order_release);
                 std::cout << "  GET key=" << task.key << " -> value=" << value << std::endl;
             } else {
+                response->status.store(RESPONSE_NOT_FOUND, std::memory_order_release);
                 std::cout << "  GET key=" << task.key << " -> NOT FOUND" << std::endl;
             }
-            // TODO: In Phase 4, write result back to task or response queue
             break;
         }
         
         case CMD_SET: {
             storage.insert_or_assign(task.key, task.value);
+            
+            // Write response
+            Response<V>* response = response_table->get_slot(task.task_id);
+            response->status.store(RESPONSE_SUCCESS, std::memory_order_release);
             std::cout << "  SET key=" << task.key << ", value=" << task.value << std::endl;
-            // TODO: In Phase 4, confirm success to client
             break;
         }
         
         case CMD_POST: {
             bool inserted = storage.insert(task.key, task.value);
+            
+            // Write response
+            Response<V>* response = response_table->get_slot(task.task_id);
             if (inserted) {
+                response->status.store(RESPONSE_SUCCESS, std::memory_order_release);
                 std::cout << "  POST key=" << task.key << ", value=" << task.value << " -> SUCCESS" << std::endl;
             } else {
+                response->status.store(RESPONSE_FAILED, std::memory_order_release);
                 std::cout << "  POST key=" << task.key << " -> FAILED (already exists)" << std::endl;
             }
-            // TODO: In Phase 4, return success/failure to client
             break;
         }
         
         case CMD_DELETE: {
             bool deleted = storage.erase(task.key);
+            
+            // Write response
+            Response<V>* response = response_table->get_slot(task.task_id);
             if (deleted) {
+                response->status.store(RESPONSE_SUCCESS, std::memory_order_release);
                 std::cout << "  DELETE key=" << task.key << " -> SUCCESS" << std::endl;
             } else {
+                response->status.store(RESPONSE_NOT_FOUND, std::memory_order_release);
                 std::cout << "  DELETE key=" << task.key << " -> NOT FOUND" << std::endl;
             }
-            // TODO: In Phase 4, return success/failure to client
             break;
         }
         
