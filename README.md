@@ -264,17 +264,8 @@ Operations return false or empty optional on failure. Common failure modes:
 - Key not found (GET returns empty optional)
 - Key already exists (POST returns false)
 
-### Limitations
-
-- Maximum 1024 concurrent in-flight requests per client
-- Keys and values must be copyable types
-- Single server process per shared memory region
-- POSIX systems only (Linux, macOS)
-
 ## License
 
-This project is available for educational and research purposes.
+MIT License - see LICENSE file for details.
 
-## Contributing
-
-Contributions are welcome. Please ensure code follows existing style and includes tests.
+This software is provided "as is", without warranty of any kind, express or implied.
