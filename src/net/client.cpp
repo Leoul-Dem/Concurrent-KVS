@@ -6,6 +6,8 @@
 #include <csignal>
 #include <errno.h>
 
+#include "../../include/kvs_client.hpp"
+
 volatile sig_atomic_t paused = 0;
 volatile sig_atomic_t terminated = 0;
 
@@ -141,19 +143,49 @@ int run_client(){
   std::cout << "SHMEM: " << mem_fd << std::endl;
   std::cout << "PID: " << pid << std::endl;
 
-  // Main event loop
-  while(!terminated){
-    if(paused){
-        while(!terminated && paused){
-            usleep(100000);  // 100ms - reasonable for this use case
+  // Map shared memory and create KVS client library instance
+  try {
+      KVSClient<int, int> kvs_client(mem_fd, pid);
+      
+      std::cout << "Successfully connected to shared memory task queue" << std::endl;
+      std::cout << "Queue size: " << kvs_client.queue_size() << std::endl;
+
+      // Main event loop
+      int operation_count = 0;
+      while(!terminated){
+        if(paused){
+            while(!terminated && paused){
+                usleep(100000);  // 100ms - reasonable for this use case
+            }
         }
-    }
 
-    // Do your actual work here
+        // Demo: Submit some test operations
+        if (operation_count < 10) {
+            int task_id = kvs_client.set(operation_count, operation_count * 100);
+            if (task_id != -1) {
+                std::cout << "Submitted SET operation: key=" << operation_count 
+                          << ", value=" << (operation_count * 100) 
+                          << ", task_id=" << task_id << std::endl;
+            } else {
+                std::cerr << "Failed to submit task (queue full?)" << std::endl;
+            }
+            
+            operation_count++;
+            usleep(500000); // Sleep 500ms between operations
+        } else {
+            usleep(100000); // Just idle
+        }
+      }
 
+      std::cout << "Client shutting down..." << std::endl;
+      // KVSClient destructor will clean up shared memory mapping
+      
+  } catch (const std::exception& e) {
+      std::cerr << "Error initializing KVS client: " << e.what() << std::endl;
+      close(client_fd);
+      return 1;
   }
 
-  std::cout << "Client shutting down..." << std::endl;
   close(client_fd);
   return 0;
 }

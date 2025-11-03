@@ -85,12 +85,12 @@ int accept_client_conn(int server_fd, std::vector<int>& client_fd){
   return 1;
 }
 
-int run_server(){
+int run_server(int temp){
 
   signal(SIGINT, handle_sigint);
   int server_fd;
   std::vector<int> client_fd;
-  int shmem_fd = 1234;
+  int shmem_fd = temp;
 
   if (create_server_fd_and_listen(server_fd) == -1) {
       return 1;
@@ -146,7 +146,7 @@ int run_server(){
 
 const char* SHM_NAME = "/task_queue_shm";
 
-int main() {
+int run() {
     // Create the shared memory object
     int shm_fd = shm_open(SHM_NAME, O_CREAT | O_RDWR, 0666);
     if (shm_fd == -1) {
@@ -175,8 +175,7 @@ int main() {
     // Construct the TaskQueue in the shared memory
     TaskQueue<int, int>* queue = new (shm_ptr) TaskQueue<int, int>();
 
-    // Use the queue...
-    // Remember to synchronize access if accessed by multiple processes
+    run_server(shm_fd);
 
     // Clean up
     munmap(shm_ptr, shm_size);
